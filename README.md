@@ -10,17 +10,21 @@
 
 ## 1. Project Overview
 
-Effective manpower planning is a critical component of industrial operations. Manufacturing facilities must continuously balance production workload, workforce availability, operator productivity, shift requirements and labour costs. Static workforce allocation can lead to understaffed shifts, excessive overtime, underutilized personnel and production-capacity bottlenecks.
+Effective manpower planning is essential for maintaining productivity, controlling labour costs and ensuring consistent production capacity in manufacturing environments.
 
-This project develops a **distributed analytics framework using Apache Spark for industrial manpower estimation and shift-level capacity planning**. It integrates historical production workload, operator availability, absenteeism, shift utilization and ergonomic indicators to evaluate workforce requirements across multiple manufacturing facilities.
+Manufacturing facilities must continuously balance production workload, workforce availability, operator productivity, shift requirements and labour costs. Inefficient workforce allocation can result in understaffed shifts, excessive overtime, idle personnel and production bottlenecks.
 
-The framework processes manufacturing execution and production workload data using PySpark DataFrames, Spark SQL and distributed data transformations. It translates operational data into actionable workforce metrics, including required Full-Time Equivalent (FTE), staffing buffers, capacity utilization, workforce deficits and labour-cost indicators.
+This project develops a **distributed analytics framework using Apache Spark for industrial manpower estimation and shift capacity planning**.
 
-The proposed solution is structured around three analytical modules:
+The framework integrates historical production workload, operator availability, absenteeism, shift utilization and ergonomic indicators to evaluate workforce requirements across multiple manufacturing facilities.
+
+Using PySpark DataFrames, Spark SQL and distributed data transformations, the pipeline converts operational data into actionable workforce metrics, including required Full-Time Equivalent (FTE), staffing buffers, capacity utilization, workforce deficits and labour-cost indicators.
+
+The framework consists of three analytical modules:
 
 1. **Shift Utilization and Capacity Risk Analysis:** Evaluates available workforce capacity against assigned production workload and identifies understaffed, balanced and underutilized shifts.
 2. **Stochastic Manpower Estimation:** Calculates base workforce requirements and additional staffing buffers by incorporating production-demand variability, processing-time fluctuations and absenteeism.
-3. **Labour Cost Analysis and Workforce Redeployment:** Quantifies overtime and idle-capacity costs and evaluates potential benefits from deploying cross-trained personnel across compatible workforce requirements.
+3. **Labour Cost and Workforce Redeployment Analysis:** Quantifies overtime and idle-capacity costs and evaluates potential benefits from deploying cross-trained personnel.
 
 The overall objective is to support data-driven workforce decisions through scalable distributed analytics.
 
@@ -36,7 +40,7 @@ The project focuses on the following industrial workforce planning objectives:
 - **Absenteeism Management:** Account for workforce availability variations when estimating roster requirements.
 - **Shift-Level Utilization:** Identify capacity shortages, overtime pressure, balanced operations and surplus workforce capacity.
 - **Labour Cost Analysis:** Examine overtime expenditure, idle workforce costs and potential workforce reallocation benefits.
-- **Distributed Data Processing:** Use Apache Spark to process, transform and aggregate manufacturing workforce data across plants, departments and specialized operator roles.
+- **Distributed Data Processing:** Use Apache Spark to process and aggregate manufacturing workforce data across plants, departments and specialized operator roles.
 
 ---
 
@@ -59,31 +63,27 @@ Key analytical operations include:
 - Comparing assigned workload against available labour capacity.
 - Classifying shifts based on utilization and capacity risk.
 
-The module calculates:
+**Effective Labour Capacity**
 
-\[
-C_{\text{eff}} =
-\frac{
-H_{\text{present}}\times
-(T_{\text{shift}}-T_{\text{nonproductive}})
-}{
-F_{\text{decay}}
-}
-\]
+```text
+C_eff = [H_present × (T_shift - T_nonproductive)] / F_decay
+```
 
 Where:
 
-- \(C_{\text{eff}}\) = effective labour capacity in man-hours.
-- \(H_{\text{present}}\) = number of available operators.
-- \(T_{\text{shift}}\) = scheduled shift duration.
-- \(T_{\text{nonproductive}}\) = non-productive time per operator.
-- \(F_{\text{decay}}\) = fatigue adjustment factor.
+- `C_eff` = Effective labour capacity in man-hours.
+- `H_present` = Number of available operators.
+- `T_shift` = Scheduled shift duration.
+- `T_nonproductive` = Non-productive time per operator.
+- `F_decay` = Fatigue adjustment factor.
 
-The utilization indicator is:
+**Utilization Indicator**
 
-\[
-\rho = \frac{W_{\text{assigned}}}{C_{\text{eff}}}
-\]
+```text
+Utilization (rho) = W_assigned / C_eff
+```
+
+Where `W_assigned` represents the total assigned production workload in man-hours.
 
 Capacity conditions are classified into four operational categories:
 
@@ -112,62 +112,56 @@ The analysis incorporates:
 - Role-specific absenteeism.
 - Target staffing service levels.
 
-Daily production workload is calculated as:
+**Daily Production Workload**
 
-\[
-W_t = D_t \times \tau_t
-\]
+```text
+W_t = D_t × tau_t
+```
 
 Where:
 
-- \(D_t\) = production demand in units.
-- \(\tau_t\) = labour cycle time per unit.
-- \(W_t\) = required labour hours.
+- `D_t` = Daily production demand in units.
+- `tau_t` = Labour cycle time per unit.
+- `W_t` = Required labour hours.
 
-The framework estimates average workload variability using:
+**Approximate Workload Standard Deviation**
 
-\[
-\sigma_W =
-\sqrt{
-\bar{\tau}^{\,2}\sigma_D^2+
-\bar D^{\,2}\sigma_\tau^2
-}
-\]
+```text
+sigma_W = sqrt(
+    (tau_mean² × sigma_D²) +
+    (D_mean² × sigma_tau²)
+)
+```
 
-This provides a first-order approximation of workload uncertainty.
+This provides a first-order approximation of workload variability.
 
-Net productive hours per operator are estimated as:
+**Net Productive Hours per Operator**
 
-\[
-H_{\text{net}}=7.0(1-\bar a)
-\]
+```text
+H_net = 7.0 × (1 - a_mean)
+```
 
-Where \(\bar a\) represents average absenteeism.
+Where `a_mean` represents average absenteeism.
 
-Base workforce requirement:
+**Base Workforce Requirement**
 
-\[
-FTE_{\text{base}} =
-\frac{\bar W}{H_{\text{net}}}
-\]
+```text
+FTE_base = W_mean / H_net
+```
 
-Safety staffing buffer:
+**Safety Staffing Buffer**
 
-\[
-FTE_{\text{safety}} =
-\frac{Z\sigma_W}{H_{\text{net}}}
-\]
+```text
+FTE_safety = (Z × sigma_W) / H_net
+```
 
-The rostered requirement is:
+**Optimal Rostered Workforce**
 
-\[
-FTE_{\text{optimal}} =
-\left\lceil
-FTE_{\text{base}}+FTE_{\text{safety}}
-\right\rceil
-\]
+```text
+FTE_optimal = CEILING(FTE_base + FTE_safety)
+```
 
-The model uses \(Z=1.65\), corresponding approximately to a one-sided 95% normal-distribution staffing coverage target under the model assumptions.
+The model uses `Z = 1.65`, corresponding approximately to a one-sided 95% normal-distribution staffing coverage target under the model assumptions.
 
 A peak workforce flexibility allowance is also calculated to support additional capacity planning.
 
@@ -186,24 +180,21 @@ This module analyses operational shift data to quantify:
 - Department-level capacity imbalances.
 - Potential savings from cross-training and workforce redeployment.
 
-The analysis identifies overburdened shifts and shifts with surplus capacity. It then evaluates a cross-training float-pool recovery scenario to estimate the potential financial benefits of reallocating compatible workforce capacity.
+The analysis identifies overburdened shifts and shifts with surplus capacity. It evaluates a cross-training float-pool recovery scenario to estimate potential financial benefits from workforce reallocation.
 
-The cost analysis aggregates:
+**Gross Labour Inefficiency Cost**
 
-\[
-C_{\text{gross}} =
-C_{\text{overtime}}+
-C_{\text{idle}}+
-C_{\text{SLA}}
-\]
+```text
+C_gross = C_overtime + C_idle + C_SLA
+```
+
+**Net Residual Labour Cost**
+
+```text
+C_net = C_gross - C_reallocation_savings
+```
 
 Potential workforce reallocation savings are evaluated using a predefined recovery assumption.
-
-\[
-C_{\text{net}} =
-C_{\text{gross}}-
-C_{\text{reallocation savings}}
-\]
 
 **Output:** Department-level labour-cost summaries, overtime and idle-capacity indicators, estimated redeployment savings and residual labour variance costs.
 
@@ -223,7 +214,7 @@ C_{\text{reallocation savings}}
 | Matplotlib | Analytical visualizations |
 | CSV | Structured input and output datasets |
 
-The pipeline is designed for local PySpark execution and supports Spark cluster deployment configurations such as YARN, Amazon EMR and Databricks.
+The pipeline is designed for local PySpark execution and can be deployed using Spark cluster configurations such as YARN, Amazon EMR and Databricks.
 
 ---
 
@@ -253,7 +244,7 @@ The project uses synthetically generated manufacturing workforce datasets to cre
 | target_strain_index | Sustainable strain baseline |
 | strain_tolerance | Permissible strain deviation |
 
-**Dataset scale:**
+**Dataset characteristics:**
 
 - 6,200 shift execution records.
 - Five manufacturing plants.
@@ -275,7 +266,7 @@ The project uses synthetically generated manufacturing workforce datasets to cre
 | daily_required_manhours | Total daily workload |
 | absenteeism_rate | Daily role-level absenteeism |
 
-**Dataset scale:**
+**Dataset characteristics:**
 
 - 3,600 daily workload observations.
 - Five manufacturing plants.
@@ -288,12 +279,12 @@ The synthetic datasets provide a controlled experimental environment for examini
 
 ## 6. Key Analytical Outputs
 
-The framework generates three primary analytical output files.
+The framework generates three primary analytical output files:
 
 | Output File | Analytical Purpose |
 |---|---|
 | `job1_utilization_risk.csv` | Shift utilization, effective capacity and capacity-risk classification |
-| `job2_headcount_optimization.csv` | Base FTE, safety staffing and optimal rostered workforce |
+| `job2_headcount_optimization.csv` | Base FTE, safety buffer and optimal rostered workforce |
 | `job3_cost_reallocation_summary.csv` | Overtime expenditure, idle-capacity costs and redeployment scenarios |
 
 ### Illustrative Project Findings
@@ -312,9 +303,9 @@ The current synthetic-data scenario reports:
 | Net residual labour variance cost | $1,918,669.31 |
 | Estimated recovery rate | 36.98% |
 
-The results illustrate how shift telemetry and workforce analytics can be used to identify labour-capacity imbalances and evaluate potential workforce redeployment strategies.
+These results illustrate how shift telemetry and workforce analytics can identify labour-capacity imbalances and evaluate potential workforce redeployment strategies.
 
-These values are generated from the project's synthetic datasets and scenario assumptions.
+*Note: Financial results are generated from synthetic datasets and scenario assumptions.*
 
 ---
 
@@ -322,15 +313,15 @@ These values are generated from the project's synthetic datasets and scenario as
 
 The project generates visual summaries to communicate workforce capacity and labour-cost indicators.
 
-### 1. Shift Utilization by Department
+**1. Shift Utilization by Department**
 
 Displays the distribution of balanced, overburdened and underutilized shifts across manufacturing departments.
 
-### 2. Labour Cost and Redeployment Analysis
+**2. Labour Cost and Redeployment Analysis**
 
 Compares gross labour inefficiency costs, potential workforce redeployment savings and residual costs.
 
-### 3. Stochastic Manpower Estimation
+**3. Stochastic Manpower Estimation**
 
 Visualizes base workforce requirements, safety staffing buffers and flexible workforce allowances by operator role.
 
@@ -351,10 +342,6 @@ capacity-planning-manpower-spark_DA/
 ├── visualizations.py
 ├── make_presentation.py
 │
-├── data/
-│   ├── raw_shift_telemetry.csv
-│   └── daily_workload_history.csv
-│
 ├── jobs/
 │   ├── job1_utilization_tracker/
 │   │   ├── spark_job.py
@@ -370,6 +357,10 @@ capacity-planning-manpower-spark_DA/
 │       ├── spark_job.py
 │       ├── mapper.py
 │       └── reducer.py
+│
+├── data/
+│   ├── raw_shift_telemetry.csv
+│   └── daily_workload_history.csv
 │
 ├── output/
 │   ├── job1_utilization_risk.csv
@@ -391,11 +382,11 @@ capacity-planning-manpower-spark_DA/
 ### Prerequisites
 
 - Python 3.9+
-- Java runtime compatible with the selected Spark version
+- Compatible Java runtime
 - Apache Spark / PySpark
 - Required Python libraries
 
-Install the dependencies:
+**Install dependencies:**
 
 ```bash
 pip install pyspark pandas numpy matplotlib
@@ -415,7 +406,7 @@ This creates the manufacturing shift telemetry and historical workload datasets.
 python run_pipeline.py
 ```
 
-The pipeline orchestrates the three Spark analytical jobs sequentially and generates their corresponding output datasets.
+The pipeline orchestrates the three analytical jobs sequentially and generates their corresponding output datasets.
 
 ### Step 3: Generate analytical visualizations
 
@@ -482,7 +473,7 @@ By integrating shift telemetry, production workload history, operator availabili
 
 Its three-module architecture connects operational utilization analysis, stochastic FTE estimation and workforce redeployment assessment into a unified pipeline.
 
-The project brings together concepts from **Industrial Engineering, Workforce Planning, Stochastic Modelling, Big Data Analytics and Distributed Computing**, demonstrating the role of data-driven methods in improving manufacturing resource planning and operational efficiency.
+The project brings together concepts from **Industrial Engineering, Workforce Planning, Stochastic Modelling, Big Data Analytics and Distributed Computing**, demonstrating the role of data-driven methods in manufacturing resource planning and operational efficiency.
 
 ---
 
